@@ -1,373 +1,102 @@
-# AuraRhythm
+# 🎧 AuraRhythm
 
-Here is a complete, single-file web application (HTML, CSS, and JavaScript) that uses the Web Audio API to capture live microphone input and analyze it in real-time. 
+**Real-Time Acoustic Harassment, Flicker & Sleep Disruption Detector**
 
-To detect multiple layers of rhythm (beats, pulses, fast flickers), the app splits the audio spectrum into **Bass**, **Mid**, and **High** frequency bands. It constantly calculates the energy history of each band and triggers a "pulse" whenever a sudden spike in energy breaks a dynamic local threshold.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Web Audio API](https://img.shields.io/badge/Web%20Audio-API-blue.svg)]()
+[![Zero Dependencies](https://img.shields.io/badge/Dependencies-None-green.svg)]()
 
-### How to run it:
-1. Save the code below as an `.html` file (e.g., `rhythm_detector.html`).
-2. Open the file in any modern web browser (Chrome, Firefox, Safari, Edge).
-3. Click **"Start Microphone"** and allow microphone permissions.
-4. Play some music, tap your desk, or make rhythmic noises into the mic!
+---
 
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rhythm & Pulse Detector</title>
-    <style>
-        :root {
-            --bg: #0f0f13;
-            --text: #ffffff;
-            --bass-color: #ff3366;
-            --mid-color: #2ed573;
-            --high-color: #1e90ff;
-        }
+## 📖 Overview
 
-        body {
-            background-color: var(--bg);
-            color: var(--text);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            text-align: center;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
+**AuraRhythm** is a browser-based, single-file acoustic analysis tool designed to detect anomalous, non-musical sound patterns. While traditional audio meters measure *volume* (decibels), AuraRhythm measures *pattern, rhythm, and frequency*. 
 
-        h1 { margin-bottom: 5px; }
-        p { color: #888; margin-bottom: 30px; }
+It was specifically engineered to identify signatures associated with **acoustic harassment**, **anxiety-inducing fast flickers**, and **sleep-interfering pulses**. By utilizing the Web Audio API to perform real-time Fast Fourier Transform (FFT) analysis, AuraRhythm isolates specific frequency bands to detect irregular bursts, sustained high-frequency electronic whines, and sub-audible low-frequency thumps that standard noise meters easily miss.
 
-        button {
-            background-color: #333;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            font-size: 18px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
-            margin-bottom: 30px;
-        }
+Because it runs entirely client-side in a single HTML file, **no audio data ever leaves your device**, ensuring complete privacy and security for sensitive environmental monitoring.
 
-        button:hover { background-color: #444; }
-        button:active { transform: scale(0.95); }
+---
 
-        .dashboard {
-            display: flex;
-            justify-content: center;
-            gap: 40px;
-            margin-bottom: 40px;
-            flex-wrap: wrap;
-        }
+## ✨ Key Features
 
-        .indicator-card {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
+*   **Multi-Band Spectral Analysis**: Splits the audio spectrum into Bass (deep thumps/vibrations), Mid (taps/pulses), and High (electronic flickers/whines) to isolate specific acoustic weapons or disturbances.
+*   **Dynamic Thresholding**: Adapts to your room's ambient noise floor. It ignores steady-state noise (like HVAC or traffic) and triggers only on sudden, anomalous *spikes* relative to the local baseline.
+*   **Burst Detection & Alerting**: Identifies rapid clusters of sound (e.g., >5 events in 3 seconds) designed to prevent habituation and trigger anxiety. Triggers visual and haptic (mobile vibration) alerts.
+*   **Evidence Logging & CSV Export**: Timestamps every detected event with exact energy levels, thresholds, and frequency bands. Exportable to CSV for documentation, pattern analysis, or legal evidence.
+*   **Sleep / Low-Distraction Mode**: Dims the UI and suppresses jarring visual flashes, allowing the tool to run silently overnight to monitor for sleep-disruption frequencies.
+*   **Live Disruption Chart**: Visualizes acoustic stress over a rolling 60-second window using Chart.js.
+*   **Zero-Dependency / Portable**: No build step, no backend, no installation. Just open `index.html` in a modern browser.
 
-        .circle {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            font-weight: bold;
-            transition: transform 0.05s ease-out, box-shadow 0.1s ease-out, background-color 0.1s;
-            background-color: #222;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
-            border: 3px solid #444;
-        }
+---
 
-        /* Base colors for inactive borders */
-        #bass-ind { border-color: var(--bass-color); color: var(--bass-color); }
-        #mid-ind  { border-color: var(--mid-color); color: var(--mid-color); }
-        #high-ind { border-color: var(--high-color); color: var(--high-color); }
+## 📊 The Disruption Index (DI)
 
-        /* Active states for detected pulses */
-        .active#bass-ind {
-            transform: scale(1.15);
-            background-color: var(--bass-color);
-            color: white;
-            box-shadow: 0 0 40px var(--bass-color);
-        }
-        .active#mid-ind {
-            transform: scale(1.15);
-            background-color: var(--mid-color);
-            color: white;
-            box-shadow: 0 0 40px var(--mid-color);
-        }
-        .active#high-ind {
-            transform: scale(1.15);
-            background-color: var(--high-color);
-            color: white;
-            box-shadow: 0 0 40px var(--high-color);
-        }
+At the core of AuraRhythm v2 is the **Disruption Index**, a proprietary metric that quantifies the "hostility" or "disruptiveness" of the acoustic environment in real-time.
 
-        .stats { margin-top: 15px; font-family: monospace; font-size: 14px; color: #aaa;}
-        
-        canvas {
-            background-color: #1a1a24;
-            border-radius: 12px;
-            width: 100%;
-            max-width: 800px;
-            height: 250px;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
-        }
+### Why not just use Decibels (dB)?
+A loud passing truck or a slamming door registers high on a decibel meter but is usually a harmless, organic environmental event. Conversely, a faint, 8kHz electronic flicker pulsing at 4Hz might register very low in decibels, but is highly effective at disrupting sleep cycles and inducing psychological distress. 
 
-        #bpm-display {
-            font-size: 28px;
-            font-weight: bold;
-            margin-top: 20px;
-            color: #ffaa00;
-        }
-    </style>
-</head>
-<body>
+### How the DI is Calculated:
+1.  **Frequency Weighting**: Events are scored based on their frequency band. High-frequency flickers (often used to cause anxiety) are weighted heavily (+3 points). Mid-band pulses (+2 points). Bass thumps (+1 point).
+2.  **Rolling Window**: The score is plotted on a live, 60-second rolling chart.
+3.  **Temporal Decay**: The score naturally decays over time (e.g., `score * 0.7` per second) unless continuously fed by new acoustic events.
+4.  **Burst Multipliers**: Rapid Inter-Pulse Intervals (IPI) that indicate machine-generated rhythms trigger exponential spikes in the index.
 
-    <h1>Rhythm & Pulse Detector</h1>
-    <p>Detects independent rhythms like heavy beats, snare pulses, and high-hat flickers.</p>
+**Result**: The Disruption Index easily differentiates between a noisy apartment (Low DI) and a targeted, rhythmic acoustic disturbance (High DI).
 
-    <button id="toggle-btn">Start Microphone</button>
+---
 
-    <div class="dashboard">
-        <div class="indicator-card">
-            <div id="bass-ind" class="circle">BASS</div>
-            <div class="stats">Deep pulses / Kicks</div>
-        </div>
-        <div class="indicator-card">
-            <div id="mid-ind" class="circle">MID</div>
-            <div class="stats">Snares / Vocals</div>
-        </div>
-        <div class="indicator-card">
-            <div id="high-ind" class="circle">HIGH</div>
-            <div class="stats">Flickers / Hi-Hats</div>
-        </div>
-    </div>
+## 🚀 Getting Started
 
-    <canvas id="visualizer" width="800" height="250"></canvas>
-    <div id="bpm-display">Estimated BPM: --</div>
+1.  **Download** the `index.html` file from this repository.
+2.  **Open** the file in any modern web browser (Chrome or Edge recommended for best Web Audio API performance).
+3.  **Click** "Start Microphone" and allow browser permissions.
+4.  **Calibrate**: Adjust the **Noise Gate** slider until false positives from your computer fan or room HVAC stop triggering the indicators.
+5.  **Monitor**: Leave the tab open. Toggle **Sleep Mode** if monitoring overnight.
 
-<script>
-    let audioContext;
-    let analyser;
-    let microphone;
-    let isRunning = false;
-    let animationFrameId;
+---
 
-    const canvas = document.getElementById('visualizer');
-    const ctx = canvas.getContext('2d');
-    const toggleBtn = document.getElementById('toggle-btn');
-    const bpmDisplay = document.getElementById('bpm-display');
+## 🗺️ Roadmap
 
-    // History array for BPM estimation
-    let bassBeatTimestamps = [];
+AuraRhythm is actively being developed to better serve those experiencing environmental disturbances. 
 
-    // Configuration for different rhythm bands
-    // Assuming a ~44100Hz sample rate. FFT size 2048 means 1024 bins. (~21.5 Hz per bin)
-    const bands = {
-        bass: {
-            element: document.getElementById('bass-ind'),
-            minBin: 1, maxBin: 8,       // ~20Hz to ~170Hz
-            history: [],                // Stores recent energy levels
-            historySize: 40,            // How many frames to remember
-            multiplier: 1.35,           // Threshold multiplier (higher = less sensitive)
-            cooldown: 12,               // Frames to wait before allowing another beat
-            currentCooldown: 0,
-            color: '#ff3366'
-        },
-        mid: {
-            element: document.getElementById('mid-ind'),
-            minBin: 15, maxBin: 60,     // ~320Hz to ~1300Hz
-            history: [],
-            historySize: 30,
-            multiplier: 1.3,
-            cooldown: 8,
-            currentCooldown: 0,
-            color: '#2ed573'
-        },
-        high: {
-            element: document.getElementById('high-ind'),
-            minBin: 150, maxBin: 400,   // ~3200Hz to ~8600Hz
-            history: [],
-            historySize: 20,            // Shorter history for faster flickers
-            multiplier: 1.25,
-            cooldown: 4,                // Very short cooldown for rapid flickers
-            currentCooldown: 0,
-            color: '#1e90ff'
-        }
-    };
+### Phase 1: Robustness & Background Operation (In Progress)
+*   [ ] **AudioWorklet Migration**: Move audio processing off the main thread to a Web Worker to prevent browser tab throttling when the window is minimized.
+*   [ ] **Desktop Wrapper**: Package the app using Electron or Tauri to allow true 24/7 background system monitoring without browser memory leaks or sleep policies.
 
-    toggleBtn.addEventListener('click', async () => {
-        if (isRunning) {
-            stopAudio();
-        } else {
-            await startAudio();
-        }
-    });
+### Phase 2: Advanced Acoustic Signatures
+*   [ ] **Spectral Flatness Analysis**: Differentiate between broadband noise (white noise/fans) and narrowband harassment tones (sweeps, whines, and digital artifacts).
+*   [ ] **Infrasound Monitoring**: Extend FFT bin analysis to capture sub-20Hz vibrations (Note: requires external USB mic hardware, as laptop mics roll off below 80Hz).
+*   [ ] **Inter-Pulse Interval (IPI) Histogram**: Visualize the time between pulses to easily spot artificial, machine-generated rhythms vs. organic sounds.
 
-    async function startAudio() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            analyser = audioContext.createAnalyser();
-            analyser.fftSize = 2048;
-            analyser.smoothingTimeConstant = 0.6; // Lower smoothing for sharper transients/flickers
+### Phase 3: AI & Pattern Recognition
+*   [ ] **Local TensorFlow.js Classification**: Train a lightweight model to classify "Harassment Signatures" vs "Environmental Noise" (HVAC, traffic, neighbors).
+*   [ ] **Sustained Tone Detection**: Add Goertzel algorithm targeting to detect continuous, low-level sine waves designed to mask as tinnitus or cause nausea.
 
-            microphone = audioContext.createMediaStreamSource(stream);
-            microphone.connect(analyser);
+### Phase 4: Evidence Chain
+*   [ ] **Ring-Buffer Audio Snippets**: Implement a localized memory ring-buffer that saves 10 seconds of actual audio *only* when a high Disruption Index threshold is crossed. This provides hard proof of anomalies while respecting privacy and storage limits.
 
-            isRunning = true;
-            toggleBtn.innerText = "Stop Microphone";
-            toggleBtn.style.backgroundColor = "#e74c3c";
+---
 
-            processAudio();
-        } catch (err) {
-            alert('Microphone access denied or not available. Please allow mic access.');
-            console.error(err);
-        }
-    }
+## ⚖️ Ethical & Legal Disclaimer
 
-    function stopAudio() {
-        if (audioContext) {
-            audioContext.close();
-        }
-        cancelAnimationFrame(animationFrameId);
-        isRunning = false;
-        toggleBtn.innerText = "Start Microphone";
-        toggleBtn.style.backgroundColor = "#333";
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Reset UI
-        Object.values(bands).forEach(b => b.element.classList.remove('active'));
-        bpmDisplay.innerText = "Estimated BPM: --";
-        bassBeatTimestamps = [];
-    }
+*   **Privacy & Consent**: AuraRhythm processes audio entirely in-browser and does not record or transmit audio by default. If you utilize future features that cache audio snippets for evidence, please ensure you are complying with your local jurisdiction's wiretapping and recording consent laws.
+*   **Hardware Limitations**: Built-in laptop and phone microphones feature aggressive hardware-level noise cancellation and automatic gain control (AGC), which can mask low-level acoustic harassment. For accurate forensic monitoring, an external USB condenser microphone with AGC disabled is highly recommended.
+*   **Psychological Safety**: Monitoring for harassment can be stressful. AuraRhythm includes a "Sleep Mode" and UI dimming to help reduce visual anxiety during long-term monitoring sessions.
 
-    function getAverageEnergy(dataArray, minBin, maxBin) {
-        let sum = 0;
-        for (let i = minBin; i < maxBin; i++) {
-            sum += dataArray[i];
-        }
-        return sum / (maxBin - minBin);
-    }
+---
 
-    function calculateBPM(timestamp) {
-        bassBeatTimestamps.push(timestamp);
-        // Keep last 8 beats
-        if (bassBeatTimestamps.length > 8) {
-            bassBeatTimestamps.shift();
-        }
+## 🤝 Contributing
 
-        if (bassBeatTimestamps.length >= 4) {
-            let intervals = [];
-            for (let i = 1; i < bassBeatTimestamps.length; i++) {
-                intervals.push(bassBeatTimestamps[i] - bassBeatTimestamps[i - 1]);
-            }
-            
-            // Calculate average interval
-            let avgInterval = intervals.reduce((a, b) => a + b) / intervals.length;
-            
-            // Convert to BPM (60,000 ms in a minute)
-            let bpm = Math.round(60000 / avgInterval);
-            
-            // Filter realistic BPM ranges (e.g., ignore artifacts below 60 or above 200)
-            if (bpm >= 60 && bpm <= 220) {
-                bpmDisplay.innerText = `Estimated BPM: ${bpm}`;
-            }
-        }
-    }
+Contributions, issues, and feature requests are welcome! If you have experience with Web Audio API, DSP (Digital Signal Processing), or Electron packaging, your expertise is highly valued.
 
-    function processAudio() {
-        if (!isRunning) return;
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-        const bufferLength = analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-        analyser.getByteFrequencyData(dataArray);
+---
 
-        const now = performance.now();
-
-        // 1. Analyze Rhythm Bands
-        Object.keys(bands).forEach(key => {
-            const band = bands[key];
-            const currentEnergy = getAverageEnergy(dataArray, band.minBin, band.maxBin);
-
-            // Add to history
-            band.history.push(currentEnergy);
-            if (band.history.length > band.historySize) {
-                band.history.shift();
-            }
-
-            // Calculate local average history
-            const localAverage = band.history.reduce((a, b) => a + b, 0) / band.history.length;
-
-            // Handle UI cooldown logic
-            if (band.currentCooldown > 0) {
-                band.currentCooldown--;
-                // Remove the flash halfway through the cooldown
-                if (band.currentCooldown < band.cooldown / 2) {
-                    band.element.classList.remove('active');
-                }
-            } else {
-                // BEAT DETECTION LOGIC: 
-                // If current energy is much higher than the recent average, and passes a noise gate (> 15)
-                if (currentEnergy > localAverage * band.multiplier && currentEnergy > 15) {
-                    // BEAT DETECTED!
-                    band.element.classList.add('active');
-                    band.currentCooldown = band.cooldown;
-
-                    // Calculate BPM based on Bass kicks
-                    if (key === 'bass') {
-                        calculateBPM(now);
-                    }
-                }
-            }
-        });
-
-        // 2. Draw Visualizer (Standard Spectrum Analyzer)
-        ctx.fillStyle = '#1a1a24';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        const barWidth = (canvas.width / 150) * 2.5; // Draw a portion of the bins for clarity
-        let barHeight;
-        let x = 0;
-
-        for (let i = 0; i < 150; i++) {
-            barHeight = dataArray[i];
-
-            // Color code the visualizer based on our frequency bands
-            if (i >= bands.bass.minBin && i <= bands.bass.maxBin) {
-                ctx.fillStyle = bands.bass.color;
-            } else if (i >= bands.mid.minBin && i <= bands.mid.maxBin) {
-                ctx.fillStyle = bands.mid.color;
-            } else if (i >= bands.high.minBin && i <= bands.high.maxBin) {
-                ctx.fillStyle = bands.high.color;
-            } else {
-                ctx.fillStyle = '#555'; // Frequencies outside our specific detection ranges
-            }
-
-            // Make it look smooth on canvas
-            ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-            x += barWidth + 1;
-        }
-
-        animationFrameId = requestAnimationFrame(processAudio);
-    }
-</script>
-
-</body>
-</html>
-```
-
-### How the logic works:
-1. **Frequency Binning:** The audio spectrum is divided into specific ranges using Fast Fourier Transform (FFT). The lowest bins capture **Bass** (drums, deep basslines), the middle bins capture **Mid** frequencies (snares, claps, vocals), and the upper bins capture **High** frequencies (hi-hats, shakers, rapid flickers).
-2. **Energy History:** The app doesn't just look for loud noises; it keeps a rolling "history" array of the average volume in those specific frequency ranges over the last few fractions of a second.
-3. **Dynamic Thresholding:** A "rhythm" or "pulse" is identified when the volume of a specific frequency range suddenly breaks its own recent rolling average by a set multiplier (e.g., if a bass drum suddenly hits, making the bass frequencies 1.35x louder than they were 10 milliseconds ago).
-4. **Adaptive Cooldowns:** The High band has a very short history and very short cooldowns, enabling it to catch very rapid "flickers". The Bass band has a longer cooldown to prevent a single long, booming kick-drum from triggering the visualizer multiple times.
+*Built with the Web Audio API, Chart.js, and vanilla JavaScript.*
