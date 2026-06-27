@@ -3,14 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rhythm & Pulse Detector</title>
+    <title>AuraRhythm v2 - Acoustic Harassment & Pulse Detector</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg: #0f0f13;
+            --card-bg: #1a1a24;
             --text: #ffffff;
+            --text-dim: #888;
             --bass-color: #ff3366;
             --mid-color: #2ed573;
             --high-color: #1e90ff;
+            --alert-color: #ff4757;
         }
 
         body {
@@ -23,48 +27,85 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            transition: background-color 0.5s, color 0.5s;
+        }
+
+        /* Sleep Mode Styling */
+        body.sleep-mode {
+            background-color: #050505;
+            color: #222;
+        }
+        body.sleep-mode .dashboard, 
+        body.sleep-mode .controls-panel,
+        body.sleep-mode h1, 
+        body.sleep-mode p,
+        body.sleep-mode .chart-container,
+        body.sleep-mode .log-panel {
+            opacity: 0.1;
+            transition: opacity 0.5s;
+        }
+        body.sleep-mode .circle.active {
+            box-shadow: none; /* Reduce visual flashing for sleep */
         }
 
         h1 { margin-bottom: 5px; }
-        p { color: #888; margin-bottom: 30px; }
+        p { color: var(--text-dim); margin-bottom: 20px; max-width: 800px; }
+
+        .btn-group { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; }
 
         button {
             background-color: #333;
             color: white;
             border: none;
-            padding: 15px 30px;
-            font-size: 18px;
+            padding: 12px 24px;
+            font-size: 16px;
             border-radius: 8px;
             cursor: pointer;
             transition: background 0.2s, transform 0.1s;
-            margin-bottom: 30px;
         }
-
         button:hover { background-color: #444; }
         button:active { transform: scale(0.95); }
+        button.primary { background-color: #2ed573; color: #000; font-weight: bold; }
+        button.danger { background-color: #e74c3c; }
+
+        .toggle-switch {
+            display: flex; align-items: center; gap: 10px; background: #222; padding: 10px 15px; border-radius: 8px;
+        }
+
+        .controls-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            width: 100%;
+            max-width: 800px;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+
+        .control-group label { display: block; margin-bottom: 5px; font-size: 14px; color: var(--text-dim); }
+        .control-group input[type="range"] { width: 100%; }
 
         .dashboard {
             display: flex;
             justify-content: center;
-            gap: 40px;
-            margin-bottom: 40px;
+            gap: 30px;
+            margin-bottom: 30px;
             flex-wrap: wrap;
         }
 
-        .indicator-card {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
+        .indicator-card { display: flex; flex-direction: column; align-items: center; }
 
         .circle {
-            width: 120px;
-            height: 120px;
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
             transition: transform 0.05s ease-out, box-shadow 0.1s ease-out, background-color 0.1s;
             background-color: #222;
@@ -72,275 +113,382 @@
             border: 3px solid #444;
         }
 
-        /* Base colors for inactive borders */
         #bass-ind { border-color: var(--bass-color); color: var(--bass-color); }
         #mid-ind  { border-color: var(--mid-color); color: var(--mid-color); }
         #high-ind { border-color: var(--high-color); color: var(--high-color); }
 
-        /* Active states for detected pulses */
-        .active#bass-ind {
-            transform: scale(1.15);
-            background-color: var(--bass-color);
-            color: white;
-            box-shadow: 0 0 40px var(--bass-color);
-        }
-        .active#mid-ind {
-            transform: scale(1.15);
-            background-color: var(--mid-color);
-            color: white;
-            box-shadow: 0 0 40px var(--mid-color);
-        }
-        .active#high-ind {
-            transform: scale(1.15);
-            background-color: var(--high-color);
-            color: white;
-            box-shadow: 0 0 40px var(--high-color);
-        }
+        .active#bass-ind { transform: scale(1.15); background-color: var(--bass-color); color: white; box-shadow: 0 0 30px var(--bass-color); }
+        .active#mid-ind { transform: scale(1.15); background-color: var(--mid-color); color: white; box-shadow: 0 0 30px var(--mid-color); }
+        .active#high-ind { transform: scale(1.15); background-color: var(--high-color); color: white; box-shadow: 0 0 30px var(--high-color); }
 
-        .stats { margin-top: 15px; font-family: monospace; font-size: 14px; color: #aaa;}
+        .stats { margin-top: 10px; font-family: monospace; font-size: 12px; color: var(--text-dim); }
         
-        canvas {
-            background-color: #1a1a24;
-            border-radius: 12px;
-            width: 100%;
-            max-width: 800px;
-            height: 250px;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        #metrics-display {
+            font-size: 18px; font-weight: bold; margin: 15px 0; color: #ffaa00;
+            background: var(--card-bg); padding: 10px; border-radius: 8px; display: inline-block;
         }
 
-        #bpm-display {
-            font-size: 28px;
-            font-weight: bold;
-            margin-top: 20px;
-            color: #ffaa00;
+        .chart-container {
+            width: 100%; max-width: 800px; height: 200px; margin: 20px auto;
+            background: var(--card-bg); padding: 15px; border-radius: 12px; position: relative;
         }
+
+        canvas#visualizer {
+            background-color: var(--card-bg); border-radius: 12px; width: 100%; max-width: 800px; 
+            height: 200px; box-shadow: inset 0 0 20px rgba(0,0,0,0.8); margin-bottom: 20px;
+        }
+
+        .log-panel {
+            width: 100%; max-width: 800px; margin-top: 20px; text-align: left;
+            background: var(--card-bg); padding: 15px; border-radius: 12px; max-height: 150px; overflow-y: auto;
+        }
+        #event-log-list { list-style: none; padding: 0; margin: 0; font-family: monospace; font-size: 12px; }
+        #event-log-list li { border-bottom: 1px solid #333; padding: 4px 0; }
+
+        .burst-alert {
+            background-color: var(--alert-color); color: white; padding: 15px; border-radius: 8px;
+            font-weight: bold; display: none; margin-bottom: 20px; width: 100%; max-width: 800px;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
-    <h1>Rhythm & Pulse Detector</h1>
-    <p>Detects independent rhythms like heavy beats, snare pulses, and high-hat flickers.</p>
+    <h1>AuraRhythm v2</h1>
+    <p>Acoustic Harassment & Sleep Disruption Detector. Monitors rapid flickers, pulses, and anxiety-inducing bursts.</p>
 
-    <button id="toggle-btn">Start Microphone</button>
+    <div class="btn-group">
+        <button id="toggle-btn" class="primary">Start Microphone</button>
+        <button id="export-btn">Export Log (CSV)</button>
+        <div class="toggle-switch">
+            <label for="sleep-toggle">Sleep Mode</label>
+            <input type="checkbox" id="sleep-toggle">
+        </div>
+    </div>
+
+    <div id="burst-alert" class="burst-alert">⚠️ ACOUSTIC BURST DETECTED ⚠️</div>
+
+    <div class="controls-panel">
+        <div class="control-group">
+            <label>Noise Gate: <span id="gate-val">15</span></label>
+            <input type="range" id="noise-gate" min="5" max="50" value="15">
+        </div>
+        <div class="control-group">
+            <label>High Sens (Flickers): <span id="high-val">1.25</span></label>
+            <input type="range" id="high-mult" min="1.05" max="2.0" step="0.05" value="1.25">
+        </div>
+        <div class="control-group">
+            <label>Mid Sens (Pulses): <span id="mid-val">1.30</span></label>
+            <input type="range" id="mid-mult" min="1.05" max="2.0" step="0.05" value="1.30">
+        </div>
+        <div class="control-group">
+            <label>Bass Sens (Beats): <span id="bass-val">1.35</span></label>
+            <input type="range" id="bass-mult" min="1.05" max="2.0" step="0.05" value="1.35">
+        </div>
+    </div>
 
     <div class="dashboard">
         <div class="indicator-card">
             <div id="bass-ind" class="circle">BASS</div>
-            <div class="stats">Deep pulses / Kicks</div>
+            <div class="stats">Deep Thumps</div>
         </div>
         <div class="indicator-card">
             <div id="mid-ind" class="circle">MID</div>
-            <div class="stats">Snares / Vocals</div>
+            <div class="stats">Pulses / Taps</div>
         </div>
         <div class="indicator-card">
             <div id="high-ind" class="circle">HIGH</div>
-            <div class="stats">Flickers / Hi-Hats</div>
+            <div class="stats">Fast Flickers</div>
         </div>
     </div>
 
-    <canvas id="visualizer" width="800" height="250"></canvas>
-    <div id="bpm-display">Estimated BPM: --</div>
+    <div id="metrics-display">Events (1m): 0 | Burst: No | Disruption: 0</div>
+
+    <div class="chart-container">
+        <canvas id="disruptionChart"></canvas>
+    </div>
+
+    <canvas id="visualizer" width="800" height="200"></canvas>
+
+    <div class="log-panel">
+        <h3 style="margin-top:0; font-size: 14px; color: #888;">Recent Event Log</h3>
+        <ul id="event-log-list"></ul>
+    </div>
 
 <script>
-    let audioContext;
-    let analyser;
-    let microphone;
-    let isRunning = false;
-    let animationFrameId;
+    // --- Global State & Config ---
+    let audioContext, analyser, microphone, isRunning = false, animationFrameId;
+    let eventLog = [];
+    let recentEvents = [];
+    let currentDisruptionScore = 0;
+    let burstAlertActive = false;
+    const noiseGate = { value: 15 };
 
     const canvas = document.getElementById('visualizer');
     const ctx = canvas.getContext('2d');
     const toggleBtn = document.getElementById('toggle-btn');
-    const bpmDisplay = document.getElementById('bpm-display');
+    const metricsDisplay = document.getElementById('metrics-display');
 
-    // History array for BPM estimation
-    let bassBeatTimestamps = [];
-
-    // Configuration for different rhythm bands
-    // Assuming a ~44100Hz sample rate. FFT size 2048 means 1024 bins. (~21.5 Hz per bin)
-    const bands = {
-        bass: {
-            element: document.getElementById('bass-ind'),
-            minBin: 1, maxBin: 8,       // ~20Hz to ~170Hz
-            history: [],                // Stores recent energy levels
-            historySize: 40,            // How many frames to remember
-            multiplier: 1.35,           // Threshold multiplier (higher = less sensitive)
-            cooldown: 12,               // Frames to wait before allowing another beat
-            currentCooldown: 0,
-            color: '#ff3366'
-        },
-        mid: {
-            element: document.getElementById('mid-ind'),
-            minBin: 15, maxBin: 60,     // ~320Hz to ~1300Hz
-            history: [],
-            historySize: 30,
-            multiplier: 1.3,
-            cooldown: 8,
-            currentCooldown: 0,
-            color: '#2ed573'
-        },
-        high: {
-            element: document.getElementById('high-ind'),
-            minBin: 150, maxBin: 400,   // ~3200Hz to ~8600Hz
-            history: [],
-            historySize: 20,            // Shorter history for faster flickers
-            multiplier: 1.25,
-            cooldown: 4,                // Very short cooldown for rapid flickers
-            currentCooldown: 0,
-            color: '#1e90ff'
-        }
+    // Chart.js Setup
+    const ctxChart = document.getElementById('disruptionChart').getContext('2d');
+    const chartData = {
+        labels: [],
+        datasets: [{
+            label: 'Disruption Index (Rolling 60s)',
+            data: [],
+            borderColor: '#ff3366',
+            backgroundColor: 'rgba(255, 51, 102, 0.1)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0
+        }]
     };
-
-    toggleBtn.addEventListener('click', async () => {
-        if (isRunning) {
-            stopAudio();
-        } else {
-            await startAudio();
+    const disruptionChart = new Chart(ctxChart, {
+        type: 'line',
+        data: chartData,
+        options: {
+            responsive: true, maintainAspectRatio: false, animation: false,
+            scales: {
+                x: { display: false },
+                y: { beginAtZero: true, grid: { color: '#333' }, ticks: { color: '#888' } }
+            },
+            plugins: { legend: { labels: { color: '#fff' } } }
         }
     });
 
+    // Band Configurations
+    const bands = {
+        bass: {
+            element: document.getElementById('bass-ind'), minBin: 1, maxBin: 8,
+            history: [], historySize: 40, multiplier: 1.35, cooldown: 12, currentCooldown: 0, color: '#ff3366'
+        },
+        mid: {
+            element: document.getElementById('mid-ind'), minBin: 15, maxBin: 60,
+            history: [], historySize: 30, multiplier: 1.30, cooldown: 8, currentCooldown: 0, color: '#2ed573'
+        },
+        high: {
+            element: document.getElementById('high-ind'), minBin: 150, maxBin: 400,
+            history: [], historySize: 20, multiplier: 1.25, cooldown: 4, currentCooldown: 0, color: '#1e90ff'
+        }
+    };
+
+    // --- UI Event Listeners ---
+    toggleBtn.addEventListener('click', async () => isRunning ? stopAudio() : await startAudio());
+    
+    document.getElementById('sleep-toggle').addEventListener('change', (e) => {
+        document.body.classList.toggle('sleep-mode', e.target.checked);
+    });
+
+    document.getElementById('export-btn').addEventListener('click', () => {
+        if (!eventLog.length) return alert('No events logged yet.');
+        const headers = ['Time', 'Band', 'Energy', 'Threshold'];
+        const csvContent = [
+            headers.join(','),
+            ...eventLog.map(e => [e.time, e.band, e.energy, e.threshold].join(','))
+        ].join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `acoustic_log_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+
+    // Sliders
+    document.getElementById('noise-gate').addEventListener('input', e => {
+        noiseGate.value = parseInt(e.target.value);
+        document.getElementById('gate-val').innerText = noiseGate.value;
+    });
+    document.getElementById('high-mult').addEventListener('input', e => {
+        bands.high.multiplier = parseFloat(e.target.value);
+        document.getElementById('high-val').innerText = bands.high.multiplier.toFixed(2);
+    });
+    document.getElementById('mid-mult').addEventListener('input', e => {
+        bands.mid.multiplier = parseFloat(e.target.value);
+        document.getElementById('mid-val').innerText = bands.mid.multiplier.toFixed(2);
+    });
+    document.getElementById('bass-mult').addEventListener('input', e => {
+        bands.bass.multiplier = parseFloat(e.target.value);
+        document.getElementById('bass-val').innerText = bands.bass.multiplier.toFixed(2);
+    });
+
+    // --- Core Audio Functions ---
     async function startAudio() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             analyser = audioContext.createAnalyser();
             analyser.fftSize = 2048;
             analyser.smoothingTimeConstant = 0.6; // Lower smoothing for sharper transients/flickers
-
             microphone = audioContext.createMediaStreamSource(stream);
             microphone.connect(analyser);
 
             isRunning = true;
             toggleBtn.innerText = "Stop Microphone";
-            toggleBtn.style.backgroundColor = "#e74c3c";
-
+            toggleBtn.classList.remove('primary');
+            toggleBtn.classList.add('danger');
             processAudio();
+            startChartInterval();
         } catch (err) {
-            alert('Microphone access denied or not available. Please allow mic access.');
+            alert('Microphone access denied or not available.');
             console.error(err);
         }
     }
 
     function stopAudio() {
-        if (audioContext) {
-            audioContext.close();
-        }
+        if (audioContext) audioContext.close();
         cancelAnimationFrame(animationFrameId);
+        clearInterval(window.chartInterval);
         isRunning = false;
         toggleBtn.innerText = "Start Microphone";
-        toggleBtn.style.backgroundColor = "#333";
+        toggleBtn.classList.add('primary');
+        toggleBtn.classList.remove('danger');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Reset UI
+        // Reset UI State
         Object.values(bands).forEach(b => b.element.classList.remove('active'));
-        bpmDisplay.innerText = "Estimated BPM: --";
-        bassBeatTimestamps = [];
+        chartData.labels = [];
+        chartData.datasets[0].data = [];
+        disruptionChart.update();
+        recentEvents = [];
+        document.getElementById('event-log-list').innerHTML = '';
+        metricsDisplay.innerText = 'Events (1m): 0 | Burst: No | Disruption: 0';
     }
 
     function getAverageEnergy(dataArray, minBin, maxBin) {
         let sum = 0;
-        for (let i = minBin; i < maxBin; i++) {
-            sum += dataArray[i];
-        }
+        for (let i = minBin; i < maxBin; i++) sum += dataArray[i];
         return sum / (maxBin - minBin);
     }
 
-    function calculateBPM(timestamp) {
-        bassBeatTimestamps.push(timestamp);
-        // Keep last 8 beats
-        if (bassBeatTimestamps.length > 8) {
-            bassBeatTimestamps.shift();
-        }
+    // --- Analysis & Logging Logic ---
+    function logEvent(band, energy, threshold) {
+        const entry = {
+            time: new Date().toISOString(),
+            band: band,
+            energy: Math.round(energy),
+            threshold: Math.round(threshold)
+        };
+        eventLog.push(entry);
+        if (eventLog.length > 5000) eventLog.shift();
+        updateRecentEventsUI(entry);
+    }
 
-        if (bassBeatTimestamps.length >= 4) {
-            let intervals = [];
-            for (let i = 1; i < bassBeatTimestamps.length; i++) {
-                intervals.push(bassBeatTimestamps[i] - bassBeatTimestamps[i - 1]);
-            }
-            
-            // Calculate average interval
-            let avgInterval = intervals.reduce((a, b) => a + b) / intervals.length;
-            
-            // Convert to BPM (60,000 ms in a minute)
-            let bpm = Math.round(60000 / avgInterval);
-            
-            // Filter realistic BPM ranges (e.g., ignore artifacts below 60 or above 200)
-            if (bpm >= 60 && bpm <= 220) {
-                bpmDisplay.innerText = `Estimated BPM: ${bpm}`;
-            }
+    function updateRecentEventsUI(entry) {
+        const list = document.getElementById('event-log-list');
+        const li = document.createElement('li');
+        const timeStr = new Date(entry.time).toLocaleTimeString();
+        li.innerText = `[${timeStr}] ${entry.band.toUpperCase()} | Energy: ${entry.energy} | Thresh: ${entry.threshold}`;
+        
+        if(entry.band === 'high') li.style.color = '#1e90ff';
+        else if(entry.band === 'mid') li.style.color = '#2ed573';
+        else li.style.color = '#ff3366';
+        
+        list.prepend(li);
+        while (list.children.length > 50) list.removeChild(list.lastChild);
+    }
+
+    function analyzePatterns(timestamp, band) {
+        recentEvents.push({time: timestamp, band: band});
+        recentEvents = recentEvents.filter(e => timestamp - e.time < 60000); // Keep 1 min
+        
+        const rate = recentEvents.length;
+        const windowEvents = recentEvents.filter(e => timestamp - e.time < 3000); // 3 sec window
+        const isBurst = windowEvents.length >= 5; // 5 events in 3 seconds = burst
+        
+        metricsDisplay.innerText = `Events (1m): ${rate} | Burst: ${isBurst ? '⚠️ YES' : 'No'} | Disruption: ${Math.round(currentDisruptionScore)}`;
+        
+        if (isBurst && !burstAlertActive) {
+            burstAlertActive = true;
+            triggerBurstAlert();
         }
     }
 
+    function triggerBurstAlert() {
+        const alertBox = document.getElementById('burst-alert');
+        alertBox.style.display = 'block';
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        
+        clearTimeout(window.burstTimeout);
+        window.burstTimeout = setTimeout(() => {
+            alertBox.style.display = 'none';
+            burstAlertActive = false;
+        }, 3000);
+    }
+
+    function startChartInterval() {
+        window.chartInterval = setInterval(() => {
+            const timeLabel = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+            chartData.labels.push(timeLabel);
+            chartData.datasets[0].data.push(currentDisruptionScore);
+            
+            if (chartData.labels.length > 60) {
+                chartData.labels.shift();
+                chartData.datasets[0].data.shift();
+            }
+            disruptionChart.update('none');
+            currentDisruptionScore = Math.max(0, currentDisruptionScore * 0.7); // Decay score
+        }, 1000);
+    }
+
+    // --- Main Processing Loop ---
     function processAudio() {
         if (!isRunning) return;
 
         const bufferLength = analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
         analyser.getByteFrequencyData(dataArray);
-
         const now = performance.now();
 
-        // 1. Analyze Rhythm Bands
         Object.keys(bands).forEach(key => {
             const band = bands[key];
             const currentEnergy = getAverageEnergy(dataArray, band.minBin, band.maxBin);
 
-            // Add to history
             band.history.push(currentEnergy);
-            if (band.history.length > band.historySize) {
-                band.history.shift();
-            }
+            if (band.history.length > band.historySize) band.history.shift();
 
-            // Calculate local average history
             const localAverage = band.history.reduce((a, b) => a + b, 0) / band.history.length;
 
-            // Handle UI cooldown logic
             if (band.currentCooldown > 0) {
                 band.currentCooldown--;
-                // Remove the flash halfway through the cooldown
-                if (band.currentCooldown < band.cooldown / 2) {
-                    band.element.classList.remove('active');
-                }
+                if (band.currentCooldown < band.cooldown / 2) band.element.classList.remove('active');
             } else {
-                // BEAT DETECTION LOGIC: 
-                // If current energy is much higher than the recent average, and passes a noise gate (> 15)
-                if (currentEnergy > localAverage * band.multiplier && currentEnergy > 15) {
-                    // BEAT DETECTED!
-                    band.element.classList.add('active');
+                if (currentEnergy > localAverage * band.multiplier && currentEnergy > noiseGate.value) {
+                    if (!document.body.classList.contains('sleep-mode')) {
+                        band.element.classList.add('active');
+                    }
                     band.currentCooldown = band.cooldown;
 
-                    // Calculate BPM based on Bass kicks
-                    if (key === 'bass') {
-                        calculateBPM(now);
-                    }
+                    // Scoring & Logging
+                    let weight = 1;
+                    if (key === 'high') weight = 3;
+                    else if (key === 'mid') weight = 2;
+                    currentDisruptionScore += weight;
+
+                    logEvent(key, currentEnergy, localAverage * band.multiplier);
+                    analyzePatterns(now, key);
                 }
             }
         });
 
-        // 2. Draw Visualizer (Standard Spectrum Analyzer)
+        // Draw Visualizer
         ctx.fillStyle = '#1a1a24';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        const barWidth = (canvas.width / 150) * 2.5; // Draw a portion of the bins for clarity
-        let barHeight;
+        const barWidth = (canvas.width / 150) * 2.5;
         let x = 0;
 
         for (let i = 0; i < 150; i++) {
-            barHeight = dataArray[i];
+            const barHeight = dataArray[i];
+            if (i >= bands.bass.minBin && i <= bands.bass.maxBin) ctx.fillStyle = bands.bass.color;
+            else if (i >= bands.mid.minBin && i <= bands.mid.maxBin) ctx.fillStyle = bands.mid.color;
+            else if (i >= bands.high.minBin && i <= bands.high.maxBin) ctx.fillStyle = bands.high.color;
+            else ctx.fillStyle = '#333';
 
-            // Color code the visualizer based on our frequency bands
-            if (i >= bands.bass.minBin && i <= bands.bass.maxBin) {
-                ctx.fillStyle = bands.bass.color;
-            } else if (i >= bands.mid.minBin && i <= bands.mid.maxBin) {
-                ctx.fillStyle = bands.mid.color;
-            } else if (i >= bands.high.minBin && i <= bands.high.maxBin) {
-                ctx.fillStyle = bands.high.color;
-            } else {
-                ctx.fillStyle = '#555'; // Frequencies outside our specific detection ranges
-            }
-
-            // Make it look smooth on canvas
             ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
             x += barWidth + 1;
         }
@@ -348,6 +496,5 @@
         animationFrameId = requestAnimationFrame(processAudio);
     }
 </script>
-
 </body>
 </html>
